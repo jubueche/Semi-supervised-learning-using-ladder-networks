@@ -21,55 +21,71 @@ from keras import regularizers
 from sklearn.model_selection import train_test_split
 
 def run_training(num_classes,batch_size,epochs,num_nodes,activation,optimizer,regularizer,lr,momentum,
-                    lmbda,loss,patienceLR,patienceEarlyStopping,x_train,y_train, x_train_unlabeled):
+                    lmbda,loss,patienceLR,patienceEarlyStopping,x_train_super,y_train_super, x_train_unlabeled):
             start = time.time()
             print('started')
 
+            x_train_7_fol = np.split(x_train_unlabeled, 7)
 
-            x_train, x_test, y_train, y_test = train_test_split(x_train, y_train, test_size=0.2)
+            for i in range(0,len(x_train_7_fol)):
 
-            y_sol = test[:,0]
-            x_sol = test[:,1:]
+                x_train, x_test, y_train, y_test = train_test_split(x_train_super, y_train_super, test_size=0.2)
 
-            y_train = keras.utils.to_categorical(y_train, num_classes)
-            y_test = keras.utils.to_categorical(y_test, num_classes)
+                print(x_train_super.shape)
+                print(y_train_super.shape)
 
-            model = Sequential()
-            model.add(Dense(num_nodes,activation=activation,input_shape=(128,)))
+                y_sol = test[:,0]
+                x_sol = test[:,1:]
 
-            model.add(Dense(num_nodes,activation=activation))
-            model.add(Dense(num_nodes,activation=activation))
+                y_train = keras.utils.to_categorical(y_train, num_classes)
+                y_test = keras.utils.to_categorical(y_test, num_classes)
 
-            model.add(Dense(num_classes, activation='softmax'))
+                model = Sequential()
+                model.add(Dense(num_nodes,activation=activation,input_shape=(128,)))
 
-            model.compile(loss=loss,
-                          optimizer=optimizer,
-                          metrics=['accuracy'])
+                model.add(Dense(num_nodes,activation=activation))
+                model.add(Dense(num_nodes,activation=activation))
 
-            learning_rate_reduction = ReduceLROnPlateau(monitor='val_acc',
-                                                        patience=patienceLR,
-                                                        verbose=1,
-                                                        factor=0.5,
-                                                        min_lr=0.0001)
+                model.add(Dense(num_classes, activation='softmax'))
 
-            history = model.fit(x_train, y_train,
-                                batch_size=batch_size,
-                                epochs=epochs,
-                                verbose=1,
-                                validation_data=(x_test, y_test),
-                                #callbacks=[learning_rate_reduction])
-                                callbacks=[EarlyStopping(monitor='val_loss', min_delta=1e-6,patience=patienceEarlyStopping, verbose=1, mode='auto'),learning_rate_reduction])
+                model.compile(loss=loss,
+                              optimizer=optimizer,
+                              metrics=['accuracy'])
 
-            loss, accuracy = model.evaluate(x_test, y_test)
-            print('\nLoss is:')
-            print(loss)
-            print(epochs)
-            print(' Epochs and hidden nodes: ')
-            print(num_nodes)
-            print('Lamda is: ')
-            print(lmbda)
-            print('Accuracy is:')
-            print(accuracy)
+                learning_rate_reduction = ReduceLROnPlateau(monitor='val_acc',
+                                                            patience=patienceLR,
+                                                            verbose=1,
+                                                            factor=0.5,
+                                                            min_lr=0.0001)
+
+                history = model.fit(x_train, y_train,
+                                    batch_size=batch_size,
+                                    epochs=epochs,
+                                    verbose=1,
+                                    validation_data=(x_test, y_test),
+                                    #callbacks=[learning_rate_reduction])
+                                    callbacks=[EarlyStopping(monitor='val_loss', min_delta=1e-6,patience=patienceEarlyStopping, verbose=1, mode='auto'),learning_rate_reduction])
+
+                model_loss, accuracy = model.evaluate(x_test, y_test)
+                print('\nLoss is:')
+                print(model_loss)
+                print(epochs)
+                print(' Epochs and hidden nodes: ')
+                print(num_nodes)
+                print('Lamda is: ')
+                print(lmbda)
+                print('Accuracy is:')
+                print(accuracy)
+
+                predicted_unsuper = model.predict(x_train_7_fol[i])
+                n = predicted_unsuper.shape[0]
+                predicted_unsuper_nums = np.zeros(n)
+                for j in range(0,n):
+                    predicted_unsuper_nums[j] = np.argmax(predicted_unsuper[j])
+
+                #Concatenate x_train_super with x_train_7_fol[i] and y_train_super with y_solR
+                x_train_super = np.concatenate((x_train_super, x_train_7_fol[i]),axis=0)
+                y_train_super = np.concatenate((y_train_super, predicted_unsuper_nums),axis=0)
 
             sol = model.predict(test[:,1:], batch_size=None, verbose=0)
 
@@ -117,12 +133,10 @@ test = pd.read_hdf("h5_files/test.h5", "test")
 train_labeled = train_labeled.values
 train_unlabeled = train_unlabeled.values
 test = test.values
-
+print(train_unlabeled.shape)
 y_train_labeled = train_labeled[:9000,1]
 x_train_labeled = train_labeled[:9000,2:]
 x_train_unlabeled = train_unlabeled[:21000,1:]
-print(y_train_labeled)
-print(x_train_labeled.shape)
 #y_train_labeled = train[:1000,1]
 #x_train_labeled = train[:1000,2:]
 #x_train_unlabeled = x_train_unlabeled[:1000,:]
