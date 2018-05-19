@@ -15,7 +15,7 @@ import keras
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adam
 from keras import regularizers
 
 from sklearn.model_selection import train_test_split
@@ -35,16 +35,15 @@ def run_training(num_classes,batch_size,epochs,num_nodes,activation,optimizer,re
             y_test = keras.utils.to_categorical(y_test, num_classes)
 
             model = Sequential()
-            model.add(Dense(num_nodes,activation=activation,input_shape=(128,),
-                            kernel_regularizer=regularizers.l2(lmbda),))
+            model.add(Dense(num_nodes,activation=activation,input_shape=(128,)))
 
+            model.add(Dense(num_nodes,activation=activation))
             model.add(Dense(num_nodes,activation=activation))
 
             model.add(Dense(num_classes, activation='softmax'))
 
-            sgd = SGD(lr=lr,momentum=momentum)
             model.compile(loss=loss,
-                          optimizer=sgd,
+                          optimizer=optimizer,
                           metrics=['accuracy'])
 
             learning_rate_reduction = ReduceLROnPlateau(monitor='val_acc',
@@ -64,7 +63,8 @@ def run_training(num_classes,batch_size,epochs,num_nodes,activation,optimizer,re
             loss, accuracy = model.evaluate(x_test, y_test)
             print('\nLoss is:')
             print(loss)
-            print('2000 Epochs and hidden nodes: ')
+            print(epochs)
+            print(' Epochs and hidden nodes: ')
             print(num_nodes)
             print('Lamda is: ')
             print(lmbda)
@@ -92,36 +92,39 @@ def run_training(num_classes,batch_size,epochs,num_nodes,activation,optimizer,re
 lmbda = 0
 num_classes = 10
 batch_size = 100
-epochs = 200
-activation ='tanh' #activation for the first layer
-optimizer ='sgd'
+epochs = 1000
+activation ='tanh'
 regularizer ='l2'
-lr=0.01
+lr=0.0005
 momentum=0
-num_nodes = 30
+sgd = SGD(lr=lr,momentum=momentum)
+adam = Adam(lr=lr)
+optimizer = adam
+num_nodes = 128
 loss='categorical_crossentropy'
 patienceLR = 20
 patienceEarlyStopping = 100
 
+
 train_labeled = pd.read_csv("train_labeledCSV.csv")
 train_unlabeled = pd.read_csv("train_unlabeledCSV.csv")
 test = pd.read_csv("testCSV.csv")
-
+'''
+train_labeled = pd.read_hdf("h5_files/train_labeled.h5", "train")
+train_unlabeled = pd.read_hdf("h5_files/train_unlabeled.h5", "train")
+test = pd.read_hdf("h5_files/test.h5", "test")
+'''
 train_labeled = train_labeled.values
 train_unlabeled = train_unlabeled.values
 test = test.values
 
 y_train_labeled = train_labeled[:9000,1]
 x_train_labeled = train_labeled[:9000,2:]
-x_train_unlabeled = train_unlabeled[:21000,:]
+x_train_unlabeled = train_unlabeled[:21000,1:]
+print(y_train_labeled)
+print(x_train_labeled.shape)
 #y_train_labeled = train[:1000,1]
 #x_train_labeled = train[:1000,2:]
 #x_train_unlabeled = x_train_unlabeled[:1000,:]
-
-'''
-for ii in range(0,layerSizes.size):
-    num_nodes = layerSizes[ii]
-    run_training(num_classes,batch_size,2000,num_nodes,activation,optimizer,regularizer,lr,momentum,0,loss,patienceLR,patienceEarlyStopping,x_train,y_train)
-'''
 
 run_training(num_classes,batch_size,epochs,num_nodes,activation,optimizer,regularizer,lr,momentum,lmbda,loss,patienceLR,patienceEarlyStopping,x_train_labeled,y_train_labeled, x_train_unlabeled)
