@@ -25,7 +25,7 @@ def run_training(num_classes,batch_size,epochs,num_nodes,activation,optimizer,re
             start = time.time()
             print('started')
 
-            x_train_7_fol = np.split(x_train_unlabeled, 10)
+            x_train_7_fol = np.split(x_train_unlabeled, 9)
 
             for i in range(0,len(x_train_7_fol)):
 
@@ -133,7 +133,7 @@ test = pd.read_hdf("h5_files/test.h5", "test")
 train_labeled = train_labeled.values
 train_unlabeled = train_unlabeled.values
 test = test.values
-
+print(train_unlabeled.shape)
 y_train_labeled = train_labeled[:9000,1]
 x_train_labeled = train_labeled[:9000,2:]
 x_train_unlabeled = train_unlabeled[:21000,1:]
