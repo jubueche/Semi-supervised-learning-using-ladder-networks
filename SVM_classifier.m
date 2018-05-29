@@ -1,24 +1,31 @@
 %% Load data
+%{
 data = table2array(importfile('train_labeledCSV.csv'));
 data_unlabeled = table2array(importfile('train_unlabeledCSV.csv'));
 test_data = table2array(importfile_test_data('testCSV.csv'));
 X = data(:,2:129);
+y = data(:,1);  
+%}
+%% Load more features
+data = load('more_features.mat');
+data = data.extended;
+X = data(:,2:end);
 y = data(:,1);
+best = 0;
+predictors = X(:,1);
 %% Train the classifier
-predictors = X;
 response = y;
-b_c = linspace(0.001,10,10);
-for i=1:10
-
+for i=2:size(X,2)
 rng(1)
+tmp_pred = horzcat(predictors,X(:,i));
 template = templateSVM(...
     'KernelFunction', 'polynomial', ...
-    'PolynomialOrder', 4, ...
+    'PolynomialOrder', 3, ...
     'KernelScale', 'auto', ...
-    'BoxConstraint', b_c(i), ...
+    'BoxConstraint', 1, ...
     'Standardize', true);
 classificationSVM = fitcecoc(...
-    predictors, ...
+    tmp_pred, ...
     response, ...
     'Learners', template, ...
     'Coding', 'onevsall', ...
@@ -37,8 +44,13 @@ partitionedModel = crossval(trainedClassifier.ClassificationSVM, 'KFold', 5);
 [validationPredictions, validationScores] = kfoldPredict(partitionedModel);
 
 % Compute validation accuracy
-b_c(i)
 validationAccuracy = 1 - kfoldLoss(partitionedModel, 'LossFun', 'ClassifError')
+if validationAccuracy >= best
+    %add to the predictors
+    i
+    predictors = horzcat(predictors,X(:,i));
+    best = validationAccuracy;
+end
 end
 %% Write to csv
 predicted_test_data = trainedClassifier.predictFcn(test_data);
