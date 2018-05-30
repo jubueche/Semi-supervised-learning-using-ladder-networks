@@ -1,3 +1,0 @@
-data = importfile('train_labeledCSV.csv');
-y = data(:,1);
-indices = find(
